@@ -239,7 +239,7 @@ largeSpecies <- lapply(1:length(largeSpecies), function(i){
   sample_n(largeSpecies[[i]], maxSize)
 })
 #Combine dataframes into one
-largelargeSpecies <- bind_rows(largeSpecues)
+largeSpecies <- bind_rows(largeSpecies)
 #Create dataframe with only small BINs
 smallSpecies <- dfData %>%
   group_by(species_name) %>%
