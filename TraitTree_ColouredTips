@@ -1,0 +1,518 @@
+#The following code outlines the steps used to create a maximum likelihood tree in R using Diptera CO1 sequences from Canada and Greenland. The code is adapted from Modules 2, 3 and 10 from https://github.com/S-Majoros/Population_Genetic_Structure
+
+#Load in packages an variables
+#install.packages("coil")
+library(coil)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("evobiR")
+library(evobiR)
+#install.packages("foreach")
+library(foreach)
+#BiocManager::install(c("ggtree"))
+library(ggtree)
+#install.packages("rlist")
+library(rlist)
+#install.packages("stringr")
+library(stringr)
+#install.packages("ape")
+library(ape)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("foreach")
+library(foreach)
+#install.packages("phangorn")
+library(phangorn)
+#BiocManager::install(c("Biostrings", "DECIPHER"))
+library(Biostrings)
+library(DECIPHER)
+
+#Set up taxa 
+taxa <- "Diptera"
+
+#Set number of sequences each genera can have. This will be used to sample down the dataset if it is too large. Here a max of 100 sequences is used.
+maxSize <- 100
+#Set up reference sequence. A list containing reference sequences for various orders is provided. Each BIN was chosen because it met the following criteria; from the specified order, contained at least 10 CO1-5P sequences, had at least one specimen photograph that matched the higher taxonomy and did not have taxonomic conflicts at family level or above. The reference sequence was chosen because it is 658 base pairs long, has 2 trace file chromatograms, and no missing information or stop codons. A Diptera sequence was used for this case study. 
+#Each sequence was retrieved from BOLD.
+#Diptera: BIN = AAA1222, Record ID = ACGAZ1590-12
+#Coleoptera: BIN = BOLD:AAA1254, Record = BBCCM200-10
+#Hymenoptera: BIN = BOLDAAA1257, Record = BANT102-10
+#Lepidoptera: BIN = AAA0006, Record = BLPDT1277-10
+#Hemiptera: BIN = BOLD:AAA1279, Record = APHNB232-11
+#Orthoptera: BIN = BOLD:AA3062, Record = BBOWC012-10
+#Carnivora: BIN = BOLD:AAC0892, Record = ETBM057-11
+#Rodentia: BIN = AAA1230, Record = MXBRO097-11
+#Chiroptera: BIN = BOLD:AAA0002, Record = ABECA957-06
+#Cypriniformes: BIN = AAA2710, Record = BNAF279-09
+#Salmoniformes: BIN = BOLD:AAD6463, Record = FBPIS369-11
+#Unionidae: BIN = BOLD:AAB1158, Record = RBCMI356-14
+#Mytilida: BIN = AAG5349, Record = BNAGB010-14
+#Anomopoda: BIN = BOLD:AAA4795, Record = DMLIM001-19
+#Amphipoda: BIN = BOLD:AAA1262, Record = AFISH098-15
+
+reference_sequence <- list(Diptera = "AACTTTATATTTTATTTTTGGAGCTTGATCTAGAATAATTGGAACTTCTTTAAGAATATTAATTCGAATTGAATTAGGTCATCCAGGTTCCTTAATTGGAAATGACCAAATTTATAATGTAATTGTAACAGCTCATGCATTTATTATAATTTTTTTTATAGTAATACCAATTATAATTGGAGGATTTGGAAATTGATTAGTTCCTTTAATATTAGGAGCACCAGATATAGCTTTTCCTCGAATGAATAATATAAGTTTTTGACTTCTTCCTCCTGCTTTAATACTTTTATTAACAAGTAGAATAGTAGAAAGTGGAGCTGGAACAGGATGAACAGTTTATCCTCCTTTATCATCTATTATTGCTCATGGAGGAGCATCTGTTGACTTAGCTATTTTTTCTCTTCATTTAGCAGGAATTTCTTCTATTTTAGGAGCTGTAAATTTTATTACAACTGTAATTAATATACGATCTATTGGTATTACCTTTGATCGAATACCTTTATTTGTTTGATCAGTTGCTATTACAGCCTTATTACTTTTATTATCTTTACCAGTTTTAGCTGGAGCAATTACAATATTATTAACAGATCGAAATTTAAATACATCATTTTTTGATCCTGCTGGAGGAGGAGATCCTATTTTATACCAACATTTATTT", 
+                           Coleoptera = "AACTTTATATTTTATTTTTGGTGCTTGATCAGGAATAGTGGGTACTTCTCTAAGAATACTAATTCGAGCTGAATTAGGAAATCCCGGATCCTTAATTGGAGATGATCAAATTTATAATGTTATTGTAACAGCCCATGCTTTCGTAATAATTTTTTTCATAGTTATACCTATTATAATTGGGGGATTTGGAAATTGGTTAGTGCCATTAATATTAGGAGCACCAGATATGGCCTTCCCTCGAATAAATAACATGAGATTTTGACTTTTGCCCCCTTCCTTGACCCTTCTCCTAATAAGTAGAATAGTTGAAAAAGGGGCAGGGACAGGTTGAACAGTTTACCCTCCGCTGTCATCAGGAATCGCTCACAGAGGGGCATCAGTGGACCTAGCTATTTTTAGACTTCATTTAGCAGGGATTTCATCAATTTTAGGAGCAGTAAATTTTATTACAACAATTATTAATATACGATCAGTAGGAATAACATTTGATCGAATACCCTTATTTGTATGATCAGTAGGAATTACAGCATTATTATTATTACTATCTTTACCAGTTTTAGCTGGAGCTATTACTATGCTTCTAACAGATCGAAATTTAAATACTTCCTTTTTTGACCCTGCCGGAGGGGGAGATCCTATTCTTTATCAACATTTATTT", 
+                           Hymenoptera = "TATACTTTACTTTATTTTTGCTATATGATCAGGAATAATTGGTGCATCACTAAGTATAATTATCCGTATAGAACTAGCAACTCCTGGAAGATGAATTAATAATGATCAAATTTATAATACTATTGTTACTGCCCATGCTTTTATTATAATTTTCTTTATAGTTATACCATTCATAATTGGAGGATTTGGAAATTGATTAGTACCCTTAATAATTGGAGCCCCAGATATAGCTTTCCCACGAATAAATAATATAAGATTTTGATTATTAATTCCTTCCTTATTACTACTATTAATAGGAAATACTTTAACTTCAGGTTCAGGAACAGGATGAACAATTTACCCTCCATTATCATCAATTATATTTCATTCATCTTTTTCAGTAGATTTTTCTATCTTCTCCTTACATATAGCAGGAATTTCTTCAATCATAGGAGCTATTAATTTTATTGTAACTATTATTTTAATAAAAAATATTTCACTTAATATAAATCAAATCCCTCTATTTCCTTGATCAGTAAAAATTACTGCAATTTTACTTCTTCTCTCTCTTCCAGTTTTAGCAGGAGCTATTACAATATTATTAACAGATCGAAATTTAAATACATCATTTTTTGACCCTTCAGGAGGTGGAGACCCAATTTTATATCAACATTTATTT", 
+                           Lepidoptera = "AACATTATATTTTATTTTTGGAATTTGAGCAGGTATAGTCGGAACTTCTTTAAGATTATTAATTCGAGCTGAATTAGGTAACCCAGGGTCTTTAATTGGAGATGACCAAATTTATAATACAATTGTTACAGCTCATGCTTTTATTATAATTTTTTTTATAGTAATACCTATTATAATTGGAGGATTTGGAAATTGACTTGTTCCTTTAATATTAGGAGCTCCTGATATAGCTTTCCCCCGAATAAATAACATAAGTTTCTGATTATTGCCTCCTTCTCTTACTCTATTAATTTCTAGAAGAATTGTAGAGAATGGGGCAGGGACTGGATGAACAGTTTACCCCCCACTTTCATCTAATATTGCCCATGGGGGTAGATCAGTAGATTTAGCAATTTTTTCTTTACATTTAGCTGGTATTTCTTCAATTTTAGGGGCAATCAATTTTATTACTACTATTATTAATATACGATTAAATAATATATCATTTGATCAATTACCTTTATTTGTTTGAGCAGTGGGAATTACAGCTTTATTATTACTTTTATCTTTACCTGTTTTAGCTGGAGCTATCACTATATTATTAACTGATCGAAATTTAAATACATCTTTTTTTGATCCTGCTGGAGGAGGAGATCCTATTTTATACCAACATTTATTT", 
+                           Hemiptera = "AACTTTATATTTCTTATTCGGAATCTGATCAGGAATAATTGGATCTTCATTAAGAATTCTAATCCGATTAGAATTAAGACAAATTAATTCAATTATTAATAATAATCAATTATATAATGTTATTGTTACAATTCATGCTTTCATTATAATTTTCTTTATAACTATACCTATTGTAATTGGAGGATTTGGAAATTGATTAATCCCTATAATAATAGGGTGCCCTGATATATCTTTTCCACGTTTAAATAATATTAGATTTTGAATATTACCCCCCTCATTAATAATAATAATTGCAAGATTTATAATCAATAATGGAACAGGAACAGGATGAACAATCTACCCACCTTTATCAAATAATATTGCTCATAATAATATTTCAGTTGATTTAACCATTTTTTCACTACATCTAGCAGGTATTTCATCCATTTTAGGAGCAATTAATTTTATTTGTACTATTTTAAATATAATACCAAATAATATAAAACTTAATCAAATTCCACTCTTCCCGTGATCAATCTTAATTACAGCAGTATTATTAATTTTATCTCTACCTGTATTAGCAGGTGCTATTACAATACTATTAACTGATCGAAATTTAAATACTTCATTTTTTGATCCCTCAGGGGGAGGAGACCCAATCTTATATCAGCATCTATT", 
+                           Orthoptera = "TACCTTATATTTTTTATTTGGAGCATGGGCTGGAATAGTAGGAACTTCTATAAGAATAATTATTCGAGCAGAATTAGGTCAACCAGGATCTCTAATTGGAGACGACCAAATTTATAATGTAATTATTACAGCACACGCATTTGTAATAATTTTCTTTATAGTTATACCTATTATAATTGGAGGATTTGGTAATTGACTTGTTCCATTAATAATTGGAGCACCAGATATAGCATTTCCACGAATAAATAATATAAGTTTTTGACTTTTACCGCCATCATTGACCCTTTTACTTGCATCTTCTATAGTTGATAATGGAGCTGGGACAGGATGAACAGTTTACCCTCCGCTTGCTGGAGCAATTGCTCATGGAGGAGCATCAGTTGATTTAGCTATCTTCTCTCTTCATTTAGCTGGTGTATCATCAATTTTAGGAGCAGTTAATTTTATTACAACAGCAATTAATATACGATCAGAGAGAATAACATTAGATCAAACACCATTATTTGTTTGATCAGTAGCTATTACAGCCCTTCTTTTATTATTATCACTTCCTGTACTAGCAGGAGCTATTACAATATTATTAACTGATCGAAACTTAAATACATCATTTTTTGACCCTGCAGGAGGGGGTGACCCAATTCTATATCAACATTTATTT",
+                           Carnivora = "CACCCTTTATCTCTTATTCGGTGCATGAGCCGGAATAGTAGGGACTGCTCTCAGCCTACTAATCCGTGCTGAACTAGGTCAACCTGGCGCCCTGCTAGGAGATGACCAGGTATACAATGTGATCGTAACTGCTCACGCATTCGTAATAATTTTCTTCATAGTAATGCCCATCATGCTTGGGGGCTTTGGAAACTGACTTATCCCTCTAATAATCGGTGCACCCGATATAGCATTCCCACGAATAAATAACATAAGCTTTTGACTTCTCCCACCTTCTTTTCTCCTCCTATTAGCCTCTTCCATGGTAGAAGCAGGCGCAGGAACAGGATGAACTGTATACCCTCCTTTAGCAGGGAATCTAGCACATGCAGGAGCATCCGTAGACCTGGCAATTTTTTCACTACACTTAGCTGGTGTTTCATCTATCCTAGGGTCAATTAACTTTATCACTACTATTATCAACATGAAACCACCCGCTATATCGCAATACCAAACTCCGCTGTTTGTATGATCAGTTTTAATTACAGCCGTACTTCTTCTTCTATCCTTACCAGTACTAGCAGCCGGTATTACCATGCTACTCACAGATCGAAACCTAAACACTACTTTCTTTGACCCGGCCGGAGGAGGAGACCCCATCCTGTACCAACACCTGTTT",
+                           Rodentia = "TACCCTCTACATAATTTTCGGTGCTTGAGCAGGTATAGTAGGAACTGGCCTTAGCATCTTAATCCGAGCTGAACTAGGTCAACCCGGCTCCCTATTAGGAGATGATCAGATCTATAACGTAATTGTAACCGCACACGCTTTTGTTATAATCTTTTTTATAGTTATACCTATCATGATTGGGGGTTTTGGCAACTGACTCGTACCATTAATAATCGGAGCCCCCGACATAGCATTCCCACGAATAAATAACATAAGCTTTTGACTATTACCACCCTCATTCCTTCTTCTCCTAGCCTCCTCAATAGTAGAAGCAGGAGCAGGAACAGGCTGAACCGTTTATCCTCCTCTAGCAGGAAACCTCGCACATGCAGGAGCATCAGTTGACCTAGCCATTTTCTCTCTTCATTTAGCCGGAATTTCTTCAATTTTAGGGGCAATTAACTTTATTACAACAATTATCAATATAAAACCACCCGCCATATCACAATATCAAACCCCATTATTTGTATGATCAGTTCTAATCACTGCAGTCCTACTTCTCCTATCCTTGCCCGTACTAGCCGCTGGCATTACTATACTACTAACAGATCGAAACCTAAACACAACTTTCTTTGACCCAGCTGGAGGGGGAGACCCCATTCTATATCAACATCTGTTC",
+                           Chiroptera = "CACCCTTTATCTTCTGTTTGGTGCTTGAGCAGGCATAGTAGGCACTGCACTAAGCCTTCTTATCCGTGCTGAGCTCGGCCAACCCGGAGCCTTATTAGGTGATGATCAGATCTATAATGTAATTGTAACAGCCCATGCCTTTGTGATAATCTTCTTTATAGTTATACCTATTATAATTGGAGGCTTTGGTAACTGACTAATTCCTCTAATAATTGGTGCCCCTGACATAGCCTTTCCCCGAATAAACAATATAAGCTTCTGACTCCTACCTCCCTCTTTCTTATTATTACTAGCCTCTTCAACAGTCGAAGCAGGAGTGGGTACCGGCTGAACAGTATACCCACCCCTAGCAGGCAATCTCGCACATGCAGGAGCTTCTGTAGATCTAGCTATTTTTTCTCTCCACCTTGCAGGAGTCTCATCAATTCTAGGCGCTATCAACTTTATTACCACTATTATTAATATGAAGCCCCCTGCTCTCTCTCAATATCAAACACCCCTGTTCGTCTGATCTGTCCTAATTACAGCCGTCTTATTACTTCTGTCTCTTCCTGTCCTAGCAGCAGGTATCACTATACTACTAACAGACCGAAACCTTAATACCACCTTCTTTGACCCTGCTGGAGGAGGAGACCCAATCCTATATCAACACCTATTC",
+                           Cypriniformes = "CACCCTTTATCTTGTATTTGGTGCCTGAGCTGGGATAGTGGGGACTGCCCTAAGCCTCCTTATTCGAGCTGAATTAAGCCAACCCGGATCCCTTTTAGGCGATGATCAAATTTATAATGTTATTGTTACCGCCCACGCCTTCGTAATAATTTTCTTTATAGTAATGCCAATTCTTATCGGCGGGTTTGGAAACTGACTTGTTCCACTAATGATTGGTGCACCTGATATAGCATTCCCACGAATAAATAATATAAGCTTCTGACTTCTTCCCCCATCATTCCTGCTACTACTAGCCTCTTCCGGGGTTGAAGCCGGCGCTGGGACAGGGTGAACAGTATACCCACCCCTCGCAGGTAATCTCGCTCATGCAGGCGCATCAGTAGACTTAACGATCTTCTCACTCCACCTGGCAGGTGTATCATCAATCCTAGGGGCAGTTAACTTTATTACCACAATTATTAACATGAAACCCCCAGCAATTTCCCAATATCAAACGCCCCTCTTTGTATGAGCCGTATTGGTAACAGCTGTCCTTCTCCTACTATCACTACCGGTCCTAGCTGCCGGAATTACAATACTACTTACAGATCGTAATCTTAATACCACCTTCTTCGACCCGGCGGGAGGGGGAGACCCAATCTTATACCAACACTTATTC",
+                           Unionidae = "TACTTTATATTTATTATTGGCTTTGTGGTCTGGTTTAATTGGGTTAGCTTTGAGGCTTTTGATTCGAGCTGAGTTGGGTCAACCAGGAAGGTTGTTAGGGGATGATCAATTGTACAATGTGATTGTTACAGCTCATGCTTTTATAATAATTTTTTTCTTGGTAATACCAATGATGATTGGTGGGTTTGGTAATTGGCTTATTCCTTTAATAATTGGTGCTCCTGATATAGCTTTTCCTCGATTAAATAATTTAAGGTTTTGGTTGCTTGTACCAGCTTTATTTTTGCTGTTAAGGTCATCATTGGTAGAGAGGGGTGTTGGTACAGGTTGAACAGTATACCCTCCTTTGTCTGGAAGTGTTGCTCATTCTGGGGCTTCGGTGGATTTGGCCATTTTCTCTTTACATCTTGCCGGTGCTTCCTCAATTTTAGGTGCTATCAATTTTATCTCTACTGTTGGGAATATGCGATCCCCAGGTTTAGTCGCTGAGCGAATTCCTTTGTTTGTTTGAGCTGTTACAGTGACAGCTGTGTTGTTAGTTGCTGCTTTACCAGTTTTAGCTGGTGCTATTACGATATTGCTTACTGATCGTAATCTGAACACTTCGTTTTTTGACCCTACGGGGGGAGGTGATCCTATTTTGTATATGCATTTATTT",
+                           Mytilida = "AAGACTCTATATTATCTTAGGTGTTTGATCGGGAATGGTGGGGATTGGTTTAAGAATGTTAATTCGAATTGAGTTAGGTCGTCCTGGAAGATTTTTAGGGGACGATCAGCTATATAACGTCATTGTTACGGCCCATGCTTTAGTTATAATTTTCTTTATGGTTATGCCTTTAATGGTCGGGGGTTTTGGGAATTGGCTTCTTCCATTAATAATAGGTTCTGTAGATATAATTTTTCCGCGACTTAACAATTTGAGATTTTGGTTTCTCCCCTCTTCATTATTTATACTGTTGAGGTCTACTTTTATTGAAAGCGGGTCCGGTACTGGATGGACTTTATATCCTCCTTTGTCTTCATATACAGGACATAGTGGCCCAGCTGTTGACATATCTTTATTTTCTTTACATTTGGCAGGTGCTTCTTCTATTGGTGGATCTATTAACTTTTTAACTAGTATAAAAAATATGCCGGTGGAGGTAATGCGAGGAGAGCGGATAATGTTGTTCTTGTGGTCTATGGTGGTAACAGCTGTTCTTTTATTGGTGTCTTTGCCTGTGCTGGCTGGCGGTATTACTATGCTGATTTTTGATCGTCATTTTAATACTTCTTTTTATGACCCTGTAGGAGGGGGAGATCCAGTGTTGTACCAACATCTCTTT",
+                           Anomopoda = "GACTTTATATTTTGTATTCGGGGTTTGATCAGGTATGGTAGGTACTGCTCTAAGTATACTTATTCGAGCTGAATTAGGACAATCAGGTAGTTTAATTGGGGATGATCAGATTTATAATGTTATTGTCACTGCCCACGCGTTTGTAATAATTTTTTTTATGGTTATGCCTATTATAATTGGAGGTTTCGGGAACTGGCTAGTACCTTTGATGTTGGGAGCTCCTGACATAGCCTTCCCTCGATTAAATAATTTAAGTTTTTGATTTTTACCCCCCGCTTTAACTCTTTTACTTGTGGGAGGGGCAGTGGAAAGTGGTGCTGGGACTGGTTGAACTGTATACCCCCCTCTCTCTGCGGGGATCGCTCATGCTGGGGCCTCTGTTGACTTAAGTATTTTTTCTCTGCATCTAGCAGGTGTTTCTTCTATTTTAGGGGCAGTAAATTTTATTACAACTATCATTAATATACGATCTTTAGGTATAACTTTAGATCGAATTCCCTTGTTTGTATGAGCGGTTGGAATCACTGCACTCTTACTTTTACTAAGTTTGCCCGTTCTTGCGGGAGCAATTACCATACTCTTAACTGACCGTAATTTGAATACTTCATTCTTTGATCCTGCGGGGGGTGGGGATCCAATTTTATACCAACATTTATTT",
+                           Amphipoda = "TACACTATATTTTATTTTAGGAGCTTGGTCTAGAGTTGTAGGTACTTCTCTAAGAGTTATTATTCGCTCAGAGTTAAGCGCTCCTGGTAATTTAATTGGAGACGACCAGTTATATAATGTAATAGTGACAGCTCACGCTTTCATTATAATTTTTTTTATAGTAATACCTATTATAATCGGAGGGTTTGGTAACTGGCTAGTACCCTTAATACTAGGCAGACCAGATATAGCCTTCCCCCGTATAAACAACATAAGATTTTGACTTCTCCCTCCTTCATTAACTTTATTACTTATAAGAGGATTAGTAGAAAGAGGTGTGGGTACAGGGTGAACTGTCTACCCCCCCCTAGCCGGTGCTACAGCCCATAGAGGGGGCGCGGTTGACTTAGCTATTTTTTCTTTACACCTGGCTGGTGCTTCTTCCATTCTAGGGGCTATTAATTTTATTTCCACTACTATTAATATACGAGGTCCCGGTATATTTATAGACCAGATACCCTTGTTTGTTTGATCAGTATTTATCACAGCAATTTTACTACTACTATCCTTACCTGTTCTAGCAGGTGCTATTACCATATTACTGACTGATCGTAATTTAAACACATCTTTTTTTGACCCTAGAGGTGGAGGTGATCCTATTCTATATCAACACTTATTT")
+
+#Set up a function to trim the sequences using a reference sequence. 
+RefSeqTrim <- function(x) {
+  #Create data frame for reference sequence 
+  #This reference sequence was taken from BOLD for Diptera (Record ID: ACGAZ1590-12, BIN:AAA1222).
+  dfRefSeq <- data.frame(taxa= taxa, nucleotides= reference_sequence$Diptera)
+  colnames(dfRefSeq)[2] <- "nucleotides"
+  #Set nucleotides to a character 
+  dfRefSeq$nucleotides <- as.character(dfRefSeq$nucleotides)
+  #Trim sequences to 620bp
+  dfRefSeq$nucleotides <- substr(dfRefSeq$nucleotides, 20, nchar(dfRefSeq$nucleotides)-19)
+  #Check sequence length
+  dfRefSeq$seqLength <- nchar(dfRefSeq$nucleotides)
+  #Ensure sequences are of character type
+  alignmentSeqs <- as.character(x$nucleotides)
+  #Name according to processid 
+  names(alignmentSeqs) <- x$processid
+  #Pull out reference sequence
+  alignmentref <- as.character(dfRefSeq$nucleotides[1])
+  #Name reference sequence 
+  names(alignmentref) <- "Reference"
+  #Put sequences together for alignment
+  alignmentSeqsPlusRef <- append(alignmentref, alignmentSeqs)
+  #Convert to DNAStringSet 
+  DNAStringSet2 <- DNAStringSet(alignmentSeqsPlusRef)
+  #Remove gaps
+  DNAStringSet2 <- RemoveGaps(DNAStringSet2)
+  #Run alignment 
+  alignment2 <- AlignSeqs(DNAStringSet2)
+  #Find stop and start positions in reference 
+  refSeqPos <- which(alignment2@ranges@NAMES=="Reference")
+  refSeqPos <- alignment2[refSeqPos]
+  refSeqPosStart <- regexpr("[ACTG]", refSeqPos)
+  refSeqPosStart <- as.numeric(refSeqPosStart)
+  refSeqPosEnd <- nchar(dfRefSeq$nucleotides[1]) + refSeqPosStart
+  refSeqPosEnd <- as.numeric(refSeqPosEnd)
+  #Trim sequence
+  alignment2Trimmed <- substr(alignment2, refSeqPosStart, refSeqPosEnd -1)
+  #Convert to DNAStringSet
+  DNAStringSet3 <- DNAStringSet(alignment2Trimmed)
+  #Remove reference sequence 
+  refSeqRm <- which(DNAStringSet3@ranges@NAMES=="Reference")
+  dnaStringSet3 <- subset(DNAStringSet3[-refSeqRm])
+  alignmentOrder <- DNAStringSet3@ranges@NAMES
+  #Reorder based on alignment
+  x <- x[match(alignmentOrder, x$processid), ]
+  #Replace old sequences with new ones 
+  trimmedSeqs <- as.character(DNAStringSet3)
+  x$nucleotides <- trimmedSeqs
+  #Return dataframe with new sequences 
+  return(x)
+}
+
+#Set distance matrix model to be used in the function dist.dna. In this case the model was set to raw, or p-distance. This model takes the number of sites that differ between each sequence pair. As this model is used in the BIN algorithm, we chose to use it here as well. The default model for the function is K80.   
+model <- "raw"
+
+#Set up dataframe with Outgroup sequences. In this study, 3 Trichoptera sequences from BOLD were chosen as the outgroups. Substitute these outgroups with those best suited for your study. 
+Outgroups <- data.frame(processid = c("Outgroup1", "Outgroup2", "Outgroup3"),
+                        bin_uri = c("Outgroup1", "Outgroup2", "Outgroup3"),
+                        species_name = c("Outgroup1", "Outgroup2", "Outgroup3"),
+                        nucleotides = c("AACTTTATATTTTATTTTTGGAAGATGAGCTGGATTACTCGGAACATCATTAAGAGTTCTAATTCGAACAGAACTAGGAACTACTAAGTCTCTAATTAATAATGATCAAATTTATAACGTATTAGTAACTGCCCATGCTTTTATCATGATTTTTTTCATAGTGATACCTATTATAATTGGAGGATTTGGAAATTGACTTGTTCCACTAATACTCGGGGCCCCAGATATAGCATTCCCGCGAATAAATAATATAAGATTTTGACTCCTTCCCCCCTCTTTAAATTTTTTACTTCTTAGAAGGTTAGTAGAAAATGGTACAGGAACCGGTTGAACTGTTTATCCGCCATTAGCGAGAAATATCGGACATATGGGAAGCTCTGTTGATCTTTCAATTTTTTCCTTACATATGGCTGGGATTTCTTCTATTCTAGGAGCTATTAATTTTATTACAACTTGTATAAGAATAAAACCAAAAAGAATACTTTTAGACCAAATACCCTTATTTGTTTGATCAGTATTAATTACAGCTTTACTACTACTTCTATCTTTACCAGTTTTAGCCGGAGCTATCACTATATTACTTACAGACCGAAACCTAAATACATCTTTTTTTGACCCAGCAGGAGGCGGAGACCCCATTTTATACCAACATTTATTT","AACTTTATATTTTATTTTTGGAAGATGAGCTGGATTACTCGGAACATCATTAAGAGTTCTAATTCGAACAGAACTAGGAACTACTAAGTCTCTAATTAATAATGATCAAATTTATAACGTATTAGTAACTGCCCATGCTTTTATCATGATTTTTTTCATAGTGATACCTATTATAATTGGAGGATTTGGAAATTGACTTGTTCCACTAATACTCGGGGCCCCAGATATAGCATTCCCGCGAATAAATAATATAAGATTTTGACTCCTTCCCCCCTCTTTAAATTTTTTACTTCTTAGAAGGTTAGTAGAAAATGGTACAGGAACCGGTTGAACTGTTTATCCGCCATTAGCGAGAAATATCGGACATATGGGAAGCTCTGTTGATCTTTCAATTTTTTCCTTACATATGGCTGGGATTTCTTCTATTCTAGGAGCTATTAATTTTATTACAACTTGTATAAGAATAAAACCAAAAAGAATACTTTTAGACCAAATACCCTTATTTGTTTGATCAGTATTAATTACCGCTTTACTACTACTTCTATCTTTACCAGTTTTAGCCGGAGCTATCACTATATTACTTACAGACCGAAACCTAAATACATCTTTTTTTGACCCAGCAGGAGGCGGAGACCCCATTTTATACCAACATTTATTT","AACTTTATATTTTATTTTTGGAAGATGGGCTGGATTACTCGGAACATCATTAAGAGTTCTAATTCGAACAGAACTAGGAACTACTAAGTCTCTAATTAATGATGATCAAATTTATAACGTATTAGTAACTGCCCATGCTTTTATCATGATTTTTTTCATAGTGATACCTATTATAATTGGAGGATTTGGAAATTGACTTGTTCCACTAATACTCGGGGCCCCAGATATAGCATTCCCGCGAATAAATAATATAAGATTTTGACTCCTTCCCCCCTCTTTAAATTTTTTACTTCTTAGAAGGTTAGTAGAAAATGGTACAGGAACCGGTTGAACTGTTTATCCGCCATTAGCGAGAAATATCGGACATATGGGAAGCTCTGTTGATCTTTCAATTTTTTCCTTACATATGGCTGGGATTTCTTCTATTCTAGGAGCTATTAATTTTATTACAACTTGTATAAGAATAAAACCAAAAAGAATACTTTTAGACCAAATACCCTTATTTGTTTGATCAGTATTAATTACAGCTTTACTACTACTTCTATCTTTACCAGTTTTAGCCGGAGCTATCACTATATTACTTACAGACCGAAACCTAAATACATCTTTTTTTGACCCAGCAGGAGGCGGAGACCCCATTTTATACCAACATTTATTT"))
+
+#Set up the model that should be used to select the best model for maximum likelihood tree generation. In our case, BIC was chosen. BIC evaluates models based on posterior probability and maximum likelihood. 
+TreeModel <- "BIC"
+
+#Set up number of intervals of discrete gamma distribution (k-value) for the maximum likelihood tree generation to be used in the function pml. For our study the value was set to 4. 4 is commonly used in studies and a default for many packages, however it is higher than the default used here. The default for this package is 1. 
+K <- 4 
+
+#Set up taxa 
+taxa <- "Diptera"
+
+#Load in Canada Data. This data is already filtered using the steps below. 
+dfData_Canada<- read.csv("dfData_Canada")
+#Load in Greenland Data 
+dfData <- read.csv("GreenlandData", sep = '\t')
+
+#Do the filtering steps for the Greenland data 
+dfData <- dfData %>%
+  #Filter out records without bin_uri
+  filter(str_detect(bin_uri, ":")) %>%
+  #Filter out records without a sequence 
+  filter(str_detect(nucleotides, "[ACTG]")) %>%
+  #Filter for records with a COI-5P sequence
+  filter(markercode == "COI-5P") %>%
+  #Filter out sequences with fewer than 500 base pairs 
+  filter(nchar(gsub("-", "", nucleotides)) > 499) %>%
+  #Filter out records without a species name
+  filter(!is.na(species_name))
+
+#Filter out high gap/N content. A threshold of 1% was chosen because species often differ by more than 2% divergence. By filtering out records with > 1% N and gap content, we are likely to get a high-quality data set, given typical patterns of variability in COI in animals. 
+startNGap <- sapply(regmatches(dfData$nucleotides, gregexpr("^[-N]", dfData$nucleotides)), length)
+startNGap <- foreach(i=1:nrow(dfData)) %do% 
+  if (startNGap[[i]]>0) { 
+    split <- strsplit(dfData$nucleotides[i], "^[-N]+") 
+    dfData$nucleotides[i] <- split[[1]][2]
+  }
+endNGap <- sapply(regmatches(dfData$nucleotides, gregexpr("[-N]$", dfData$nucleotides)), length)
+endNGap <- foreach(i=1:nrow(dfData)) %do%
+  if (endNGap[[i]]>0) {
+    split <- strsplit(dfData$nucleotides[i], "[-N]+$")
+    dfData$nucleotides[i] <- split[[1]][1]
+  }
+internalNGap <- sapply(regmatches(dfData$nucleotides, gregexpr("[-N]", dfData$nucleotides)), length)
+internalNGap <- foreach(i=1:nrow(dfData)) %do%
+  which((internalNGap[[i]]/nchar(dfData$nucleotides[i]) > 0.01))
+nGapCheck <- sapply(internalNGap, function(x)length(x))
+nGapCheck <- which(nGapCheck>0)
+dfData <- dfData[-nGapCheck, ]
+
+#Remove redundant "BOLD" section from each row in the BIN column 
+dfData$bin_uri <- substr(dfData$bin_uri, 6, 13)
+
+#Sequences can only contain a, c, g, t, -, or n. Use the following code to remove any sequences that contain other characters. 
+dfData <- filter(dfData, !grepl("R", dfData$nucleotides)==TRUE)
+dfData <- filter(dfData, !grepl("K", dfData$nucleotides))
+dfData <- filter(dfData, !grepl("M", dfData$nucleotides))
+dfData <- filter(dfData, !grepl("Y", dfData$nucleotides))
+dfData <- filter(dfData, !grepl("S", dfData$nucleotides))
+dfData <- filter(dfData, !grepl("W", dfData$nucleotides))
+dfData <- filter(dfData, !grepl("D", dfData$nucleotides))
+dfData <- filter(dfData, !grepl("B", dfData$nucleotides))
+
+#Check for stop codons and indels.
+#Save sequences to a list 
+sequences <- as.list(dfData$nucleotides)
+#Save record IDs as list 
+processID <- as.list(dfData$processid)
+#Look up translation table for your taxa
+translation_table <- which_trans_table("Diptera")
+#Check for insertions and deletions
+coi5p_object <- lapply(1:length(sequences), function(i){
+  coi5p_pipe(sequences[[i]], trans_table = translation_table, name = processID[[i]], triple_translate = TRUE)
+})
+#See which sequences have indels and stop codons and remove these from the list
+indels <- list.exclude(coi5p_object, indel_likely == "TRUE")
+stop_codon <- list.exclude(coi5p_object, stop_codons == "TRUE")
+#Create a list of processids for remaining sequences
+Ids_Filtered_Indels <- lapply(1:length(indels), function(i){
+  indels[[i]]$name
+})
+Ids_Filtered_Stop <- lapply(1:length(stop_codon), function(i){
+  stop_codon[[i]]$name
+})
+#Remove sequences with indels and stop codons from dataset
+dfData <- dfData[dfData$processid %in% Ids_Filtered_Indels, ]
+dfData <- dfData[dfData$processid %in% Ids_Filtered_Stop, ]
+
+#Reduce datasets to only needed columns 
+dfData <- (dfData[, c("processid", "bin_uri", "family_name", "genus_name", "species_name", "nucleotides")])
+
+#Join Canada and Greenland datasets
+dfData <- rbind(dfData, dfData_Canada)
+#Reduce dataframe to only include species also present in the trait data
+Traitdata <- read.csv("DipteraTraitDataset.csv")
+Traitdata <- Traitdata [!(Traitdata$Species==""), ]
+Data_Filter <- which(dfData$species_name %in% Traitdata$Species)
+dfData <- dfData[Data_Filter, ]
+
+#Split dataframe based on species 
+Species_List <- split(dfData, f = dfData$species_name)
+
+#Sample down the dataset to only have 100 sequences per species 
+#Create dataframe with only large species
+largeSpecies <- dfData %>%
+  group_by(species_name) %>%
+  filter(n() >= maxSize)
+#Ungroup dataframe 
+largeSpecies <- ungroup(largeSpecies, species_name)
+#Split into list of dataframes
+largeSpecies <- split(largeSpecies, f = largeSpecies$species_name)
+#Sample down each dataframe
+largeSpecies <- lapply(1:length(largeSpecies), function(i){
+  sample_n(largeSpecies[[i]], maxSize)
+})
+#Combine dataframes into one
+largelargeSpecies <- bind_rows(largeSpecues)
+#Create dataframe with only small BINs
+smallSpecies <- dfData %>%
+  group_by(species_name) %>%
+  filter(n() < maxSize)
+#Ungroup dataframe 
+smallSpecies <- ungroup(smallSpecies, species_name)
+#Combine large and small dataframes
+dfFull <- rbind(largeSpecies, smallSpecies)
+
+#Split dataframe based on species 
+Species_List <- split(dfFull, f = dfFull$species_name)
+
+#Find a centroid sequence for each species. A centroid is defined as the sequence with the minimum average distance to all others in its species and is a representative sequence for each species.
+#Find the number of processids in each species
+Species_Size <- sapply(Species_List, function(x)length(x$processid))
+#Create new data frame with species and group size
+dfData_Species <- data.frame(Species_Size)
+dfData_Species$species_name <- rownames(dfData_Species)
+#Merge dfData and dfData_Species
+dfSpecies_List <- merge(dfData, dfData_Species, by.x="species_name", by.y="species_name")
+#Reorder dfData_Species by species name
+dfData_Species <- dfData_Species[order(dfData_Species$species_name), ]
+
+#Find species with more than one member
+largeSpecies <- which(dfSpecies_List$Species_Size > 1)   
+#Create dataframe with only species with more than one member 
+if (length(largeSpecies) > 0) {
+  dfCentroid <- dfSpecies_List[largeSpecies, ]
+}
+
+#Subset dfData_Species down to number of species in dfCentroid
+dfData_Species <- subset(dfData_Species, dfData_Species$species_name %in% dfCentroid$species_name)
+
+#Find number of unique species in dfCentroid 
+SpeciesNumberCentroid <- unique(dfCentroid$species_name)   
+SpeciesNumberCentroid <- length(SpeciesNumberCentroid) 
+
+#Create dataframe with species with only one sequence 
+dfNonCentroid <- dfSpecies_List[-largeSpecies, ]
+
+#Create list from dfCentroid 
+largeSpeciesList <- lapply(unique(dfCentroid$species_name), function(x) dfCentroid[dfCentroid$species_name == x, ])
+#Extract process Id from each species
+largeSpeciesProcessid <- sapply(largeSpeciesList, function(x) (x$processid))
+
+#Convert sequences to dnaStringSet
+dnaStringSet1 <- sapply(largeSpeciesList, function(x) DNAStringSet(x$nucleotides))  
+#Name dnaStringSet with processids   
+for(i in seq(from=1, to=SpeciesNumberCentroid, by=1)) {
+  names(dnaStringSet1[[i]]) <- largeSpeciesProcessid[[i]]
+}
+#Check class of dnaStringSet1
+class(dnaStringSet1[[1]])
+#Check names of stringsets 
+names(dnaStringSet1[[1]])
+
+#Remove gaps
+dnaStringSet1 <- lapply(1:length(dnaStringSet1), function(i){
+  RemoveGaps(dnaStringSet1[[i]])
+})
+
+#Run multiple sequence alignment for sequences in each species in dnaStringSet1  
+alignment1 <- foreach(i=1:SpeciesNumberCentroid) %do%
+  AlignSeqs(dnaStringSet1[[i]])
+
+#Convert to DNAbin format 
+dnaSpeciesCentroid <- foreach(i=1:SpeciesNumberCentroid) %do% as.DNAbin(alignment1[[i]])
+#Check class
+class(dnaSpeciesCentroid[[1]])
+
+#Calculate a pairwise distance matrix for each species
+geneticDistanceCentroid <- foreach(i=1:SpeciesNumberCentroid) %do%
+  dist.dna(dnaSpeciesCentroid[[i]], model= model, as.matrix = TRUE,
+           pairwise.deletion = TRUE)
+
+#Determine centroid sequence; The sequence with the minimum average distance to all other sequences in the species.
+centroidSeq <- foreach(i=1:SpeciesNumberCentroid) %do% which.min(rowSums(geneticDistanceCentroid[[i]]))
+centroidSeq <- centroidSeq %>%
+  unlist() %>%
+  names()
+
+#Subset dfCentroid by the processid on the list 
+dfCentroid <- subset(dfCentroid, processid %in% centroidSeq)
+
+#Merge with dfNonCentroid
+dfAllSeq <- rbind(dfCentroid, dfNonCentroid)
+#Merge with the original data set 
+dfAllSeq <- merge(dfAllSeq, dfData, by.x="processid", by.y="processid")
+#Reorganize and clean up 
+dfAllSeq <- (dfAllSeq[, c("processid", "bin_uri.x", "Species_Size", "species_name.x", "nucleotides.x")])
+colnames(dfAllSeq)[2] <- "bin_uri"
+colnames(dfAllSeq)[4] <- "species_name"
+colnames(dfAllSeq)[5] <- "nucleotides"
+
+#Rerun alignment with centroid sequences, outgroup and a reference
+#Create RefSeq data frame
+dfRefSeq <- data.frame(taxa= taxa, nucleotides= reference_sequence$Diptera)
+
+#name nucleotide column and set as character 
+colnames(dfRefSeq)[2] <- "nucleotides"
+dfRefSeq$nucleotides <- as.character(dfRefSeq$nucleotides) 
+#Trim references to standard 620
+dfRefSeq$nucleotides <- substr(dfRefSeq$nucleotides, 20, nchar(dfRefSeq$nucleotides)-19) 
+#Check sequence length
+dfRefSeq$seqLength <- nchar(dfRefSeq$nucleotides)
+
+#Ensure bin_uri is a character
+dfAllSeq$bin_uri <- as.character(dfAllSeq$bin_uri)
+#Add outgroup sequences to the dataframe 
+dfAllSeq <- full_join(dfAllSeq, Outgroups)
+
+#Align and trim sequences 
+dfAligned <- RefSeqTrim(dfAllSeq)
+
+#Remove NAs 
+dfAligned <- dfAligned[-c(1), ]
+
+#Convert sequences to DNAStringSet format 
+dnaStringSet2 <- DNAStringSet(dfAligned$nucleotides)
+#Name the stringset
+names(dnaStringSet2) <- dfAligned$species_name
+#Check names are assigned properly 
+names(dnaStringSet2)
+
+#Export alignment to check it in another program such as MEGA. 
+writeXStringSet(dnaStringSet2, file = "CentroidAlignment2.fas", format = "fasta")
+
+#Set up the data in the correct format and generate the maximum liklihood tree
+#Read in alignment in phyDat format
+phylo_dat <- read.phyDat("CentroidAlignment2.fas", format="fasta", type="DNA")
+#Check format
+class(phylo_dat)
+
+#create a distance matrix
+dm <- dist.ml(phylo_dat)
+
+#creating NJ tree
+tree <- NJ(dm)
+
+#Run a model test to determine which model to use when creating the maximum liklihood tree 
+model_test <- modelTest(phylo_dat, tree)
+
+#create the environment 
+env <- attr(model_test, "env")
+
+#create function to find best model 
+get_best_model = function(model_df){
+  best_model = model_df['Model'][model_df[TreeModel] == min(model_df[TreeModel]) ]
+  return(best_model)
+}
+#Determine best model for the data
+Best_Model <- get_best_model(model_test)
+
+#Get parameters for the model 
+model_fit <- eval(get(Best_Model, env), env)
+
+#Pull out inv value 
+inv_values <- model_fit$inv
+
+#Compute likelihood. 
+ml_out = pml(tree, phylo_dat, k=K, inv = model_fit$inv)
+
+#Drop the suffix from the model name
+Best_Model2 = unlist(strsplit(Best_Model, "\\+"))[[1]]
+
+#Compute likelihood and optimize parameters. For our study, optNni, optGamma and optInv are all set to TRUE.  
+ml_tree = optim.pml(ml_out, optNni = TRUE, optGamma = TRUE, optInv = TRUE, model = Best_Model2)
+
+#Root the tree using the outgroups
+Tree_Rooted <- root(ml_tree$tree, outgroup = Outgroups$processid, resolve.root = TRUE)
+#Plot the tree
+plot(Tree_Rooted)
+
+#Remove the outgroups
+tree <- drop.tip(Tree_Rooted, Outgroups$processid)
+#Plot the tree. 
+plot(tree)
+
+#For the tree, only include species level traits
+Traitdata <- Traitdata [!(Traitdata$Species==""), ]
+
+#Reduce data to only include species present in the tree 
+Data_Filter <- which(Traitdata$Species %in% dfData$species_name)
+Traitdata <- Traitdata[Data_Filter, ]
+
+#Ensure data is in the same order as the tips 
+Traitdata <- ReorderData(tree, Traitdata, taxa.names = 4)
+
+#Habitat
+#Create vectors containing the species with each trait type 
+TerrestrialSpecies <- which(Traitdata, Traitdata$Habitat == "Terrestrial")
+TerrestrialSpecies <- c(TerrestrialSpecies$Species)
+AquaticSpecies <- filter(Traitdata, Traitdata$Habitat == "Aquatic")
+AquaticSpecies <- c(AquaticSpecies$Species)
+SemiAquaticSpecies <- filter(Traitdata, Traitdata$Habitat == "SemiAquatic")
+SemiAquaticSpecies <- c(SemiAquaticSpecies$Species)
+
+#Create list of species with different trait types
+Habitat <- list(TerrestrialSpecies, AquaticSpecies, SemiAquaticSpecies)
+
+# Use the group OTU function to group by trait
+grouptree <-groupOTU(tree, Habitat)
+
+# Color by group and change to circular format
+colorTree <- ggtree(grouptree, layout = "circular") +
+  geom_tippoint(aes(color=group, shape=isTip), size=1)
+
+plot(colorTree)
+
+#Adult Diet
+#Create vectors containing the species with each trait type 
+SaprophagousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Saprophagous")
+SaprophagousSpecies <- c(SaprophagousSpecies$Species)
+NectivoreSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Nectivore")
+NectivoreSpecies <- c(NectivoreSpecies$Species)
+FungivoreSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Fungivore")
+FungivoreSpecies <- c(FungivoreSpecies$Species)
+PredaceousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Predaceous")
+PredaceousSpecies <- c(PredaceousSpecies$Species)
+PhytophagousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Phytophagous")
+PhytophagousSpecies <- c(PhytophagousSpecies$Species)
+NASpecies <- filter(Traitdata, Traitdata$Adult_Diet == "N/A")
+NASpecies <- c(NASpecies$Species)
+Nectivore_and_PredaceousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Nectivore_and_Predaceous ")
+Nectivore_and_PredaceousSpecies <- c(Nectivore_and_PredaceousSpecies$Species)
+Nectivore_and_SaprophagousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Nectivore_and_Saprophagous")
+Nectivore_and_SaprophagousSpecies <- c(Nectivore_and_SaprophagousSpecies$Species)
+Fungivore_and_NectivoresSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Fungivore_and_Nectivores")
+Fungivore_and_NectivoresSpecies <- c(Fungivore_and_NectivoresSpecies$Species)
+Phytophagous_and_FungivoreSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Phytophagous_and_Fungivore")
+Phytophagous_and_FungivoreSpecies <- c(Phytophagous_and_FungivoreSpecies$Species)
+
+#Create list of species with different trait types
+AdultDiet <- list(SaprophagousSpecies, NectivoreSpecies, FungivoreSpecies, PredaceousSpecies, PhytophagousSpecies, NASpecies, Nectivore_and_PredaceousSpecies, Nectivore_and_SaprophagousSpecies, Fungivore_and_NectivoresSpecies, Phytophagous_and_FungivoreSpecies)
+
+# Use the group OTU function to group by trait
+grouptree <-groupOTU(tree, AdultDiet)
+
+# Color by group and change to circular format
+colorTree <- ggtree(grouptree, layout = "circular") +
+  geom_tippoint(aes(color=group, shape=isTip), size=1)
+
+plot(colorTree)
+
+#Larval Diet
+#Create vectors containing the species with each trait type 
+PhytophagousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Phytophagous")
+PhytophagousSpecies <- c(PhytophagousSpecies$Species)
+PredaceousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Predaceous")
+PredaceousSpecies <- c(PredaceousSpecies$Species)
+SaprophagousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Saprophagous")
+SaprophagousSpecies <- c(SaprophagousSpecies$Species)
+FungivoreSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Fungivore")
+FungivoreSpecies <- c(FungivoreSpecies$Species)
+OmnivoresSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Omnivores")
+OmnivoresSpecies <- c(OmnivoresSpecies$Species)
+ParasitoidSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Parasitoid")
+ParasitoidSpecies <- c(ParasitoidSpecies$Species)
+ParasiticSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Parasitic ")
+ParasiticSpecies <- c(ParasiticSpecies$Species)
+Phytophagous_and_SaprophagousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Phytophagous_and_Saprophagous")
+Phytophagous_and_SaprophagousSpecies <- c(Phytophagous_and_SaprophagousSpecies$Species)
+Phytophagous_and_FungivoreSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Phytophagous_and_Fungivore")
+Phytophagous_and_FungivoreSpecies <- c(Phytophagous_and_FungivoreSpecies$Species)
+
+#Create list of species with different trait types
+LarvalDiet <- list(PhytophagousSpecies, PredaceousSpecies, SaprophagousSpecies, FungivoreSpecies, OmnivoresSpecies, ParasitoidSpecies, ParasiticSpecies, Phytophagous_and_SaprophagousSpecies, Phytophagous_and_FungivoreSpecies)
+
+# Use the group OTU function to group by trait
+grouptree <-groupOTU(tree, LarvalDiet)
+
+# Color by group and change to circular format
+colorTree <- ggtree(grouptree, layout = "circular") +
+  geom_tippoint(aes(color=group, shape=isTip), size=1)
+
+plot(colorTree)
