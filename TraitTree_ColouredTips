@@ -249,6 +249,9 @@ smallSpecies <- ungroup(smallSpecies, species_name)
 #Combine large and small dataframes
 dfFull <- rbind(largeSpecies, smallSpecies)
 
+#At this point you can read in the sampled down data if you did not wish to run the above filtering code. 
+#dfFull <- read.csv("SampledDownData.csv")
+
 #Split dataframe based on species 
 Species_List <- split(dfFull, f = dfFull$species_name)
 
