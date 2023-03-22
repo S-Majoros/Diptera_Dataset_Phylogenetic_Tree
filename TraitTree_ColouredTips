@@ -217,7 +217,7 @@ dfData <- (dfData[, c("processid", "bin_uri", "family_name", "genus_name", "spec
 #Join Canada and Greenland datasets
 dfData <- rbind(dfData, dfData_Canada)
 #Reduce dataframe to only include species also present in the trait data
-Traitdata <- read.csv("DipteraTraitDataset.csv")
+Traitdata <- read.csv("DipteraTraitDataset_NonDarwinCoreFormat.csv")
 Traitdata <- Traitdata [!(Traitdata$Species==""), ]
 Data_Filter <- which(dfData$species_name %in% Traitdata$Species)
 dfData <- dfData[Data_Filter, ]
