@@ -30,9 +30,10 @@ Description of methods used for processing/analysis of data: The full analysis t
 Package reference: Schneider,  F.D., Jochum, M., Le Provost, G., Ostrowski, A., Penone, C., Fichtmüller, D., Güntsch, A., Gossner, M.M., König-Ries, B., Manning, P., Simons, N.K. (2019). Towards an Ecological Trait-data Standard. Methods in Ecology and Evolution, 10(12), 2006-2019. doi: 10.1111/2041-210X.13288
 
 Dataset Contents: 
-Number of columns: 12
-Number of rows: 1987
+Number of columns: 25
+Number of rows: 1985
 Column List:
+id: The serial number for each record
 order: The order level taxonomic classification.
 family: The family level taxonomic classification.
 subfamily: The subfamily level taxonomic classification.
