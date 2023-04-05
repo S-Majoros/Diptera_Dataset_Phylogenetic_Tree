@@ -2,7 +2,7 @@ This repository contains script to create a phylogenetic tree and colour the tip
 This repository also contains the dataset outlined in the manuscript and a detailed README is provided below.  
 
 
-This README.txt was last updated on March 20th, 2023, by Samantha Majoros
+This README.txt was last updated on April 5th, 2023, by Samantha Majoros
 We request that researchers cite this paper when using this dataset: 
 Majoros, S.E. & Adamowicz, S.J. (2023). CanFlyet: Habitat Zone and Diet Trait Dataset for Diptera Species of Canada and Greenland. bioRxiv. doi: 10.1101/2023.03.15.532812. 
 
