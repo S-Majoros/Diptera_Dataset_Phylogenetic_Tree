@@ -217,9 +217,8 @@ dfData <- (dfData[, c("processid", "bin_uri", "family_name", "genus_name", "spec
 #Join Canada and Greenland datasets
 dfData <- rbind(dfData, dfData_Canada)
 #Reduce dataframe to only include species also present in the trait data
-Traitdata <- read.csv("DipteraTraitDataset_NonDarwinCoreFormat.csv")
-Traitdata <- Traitdata [!(Traitdata$Species==""), ]
-Data_Filter <- which(dfData$species_name %in% Traitdata$Species)
+Traitdata <- read.csv("DipteraTraitDataset_2024.csv")
+Data_Filter <- which(dfData$species_name %in% Traitdata$scientificName)
 dfData <- dfData[Data_Filter, ]
 
 #Split dataframe based on species 
@@ -422,23 +421,23 @@ tree <- drop.tip(Tree_Rooted, Outgroups$processid)
 plot(tree)
 
 #For the tree, only include species level traits
-Traitdata <- Traitdata [!(Traitdata$Species==""), ]
+Traitdata <- Traitdata [!(Traitdata$scientificName==""), ]
 
 #Reduce data to only include species present in the tree 
-Data_Filter <- which(Traitdata$Species %in% dfData$species_name)
+Data_Filter <- which(Traitdata$scientificName %in% dfData$species_name)
 Traitdata <- Traitdata[Data_Filter, ]
 
 #Ensure data is in the same order as the tips 
-Traitdata <- ReorderData(tree, Traitdata, taxa.names = 4)
+Traitdata <- ReorderData(tree, Traitdata, taxa.names = 7)
 
 #Habitat
 #Create vectors containing the species with each trait type 
-TerrestrialSpecies <- which(Traitdata, Traitdata$Habitat == "Terrestrial")
-TerrestrialSpecies <- c(TerrestrialSpecies$Species)
-AquaticSpecies <- filter(Traitdata, Traitdata$Habitat == "Aquatic")
-AquaticSpecies <- c(AquaticSpecies$Species)
-SemiAquaticSpecies <- filter(Traitdata, Traitdata$Habitat == "SemiAquatic")
-SemiAquaticSpecies <- c(SemiAquaticSpecies$Species)
+TerrestrialSpecies <- filter(Traitdata, Traitdata$habitat == "Terrestrial")
+TerrestrialSpecies <- c(TerrestrialSpecies$scientificName)
+AquaticSpecies <- filter(Traitdata, Traitdata$habitat == "Aquatic")
+AquaticSpecies <- c(AquaticSpecies$scientificName)
+SemiAquaticSpecies <- filter(Traitdata, Traitdata$habitat == "SemiAquatic")
+SemiAquaticSpecies <- c(SemiAquaticSpecies$scientificName)
 
 #Create list of species with different trait types
 Habitat <- list(TerrestrialSpecies, AquaticSpecies, SemiAquaticSpecies)
@@ -454,30 +453,39 @@ plot(colorTree)
 
 #Adult Diet
 #Create vectors containing the species with each trait type 
-SaprophagousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Saprophagous")
-SaprophagousSpecies <- c(SaprophagousSpecies$Species)
-NectivoreSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Nectivore")
-NectivoreSpecies <- c(NectivoreSpecies$Species)
-FungivoreSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Fungivore")
-FungivoreSpecies <- c(FungivoreSpecies$Species)
-PredaceousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Predaceous")
-PredaceousSpecies <- c(PredaceousSpecies$Species)
-PhytophagousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Phytophagous")
-PhytophagousSpecies <- c(PhytophagousSpecies$Species)
-NASpecies <- filter(Traitdata, Traitdata$Adult_Diet == "N/A")
-NASpecies <- c(NASpecies$Species)
-Nectivore_and_PredaceousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Nectivore_and_Predaceous ")
-Nectivore_and_PredaceousSpecies <- c(Nectivore_and_PredaceousSpecies$Species)
-Nectivore_and_SaprophagousSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Nectivore_and_Saprophagous")
-Nectivore_and_SaprophagousSpecies <- c(Nectivore_and_SaprophagousSpecies$Species)
-Fungivore_and_NectivoresSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Fungivore_and_Nectivores")
-Fungivore_and_NectivoresSpecies <- c(Fungivore_and_NectivoresSpecies$Species)
-Phytophagous_and_FungivoreSpecies <- filter(Traitdata, Traitdata$Adult_Diet == "Phytophagous_and_Fungivore")
-Phytophagous_and_FungivoreSpecies <- c(Phytophagous_and_FungivoreSpecies$Species)
+NectarSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding")
+NectarSpecies <- c(NectarSpecies$scientificName)
+NonFeedingSpecies <- filter(Traitdata, Traitdata$adultDiet == "NonFeeding")
+NonFeedingSpecies <- c(NonFeedingSpecies$scientificName)
+PredaceousSpecies <- filter(Traitdata, Traitdata$adultDiet == "Predaceous")
+PredaceousSpecies <- c(PredaceousSpecies$scientificName)
+SaprophagousSpecies <- filter(Traitdata, Traitdata$adultDiet == "Saprophagous")
+SaprophagousSpecies <- c(SaprophagousSpecies$scientificName)
+LeafSpecies <- filter(Traitdata, Traitdata$adultDiet == "Leaf/Root/Stem Feeding")
+LeafSpecies <- c(LeafSpecies$scientificName)
+UnclearSpecies <- filter(Traitdata, Traitdata$adultDiet == "Unclear")
+UnclearSpecies <- c(UnclearSpecies$scientificName)
+ParasiticSpecies <- filter(Traitdata, Traitdata$adultDiet == "Parasitic")
+ParasiticSpecies <- c(ParasiticSpecies$scientificName)
+DetritusSpecies <- filter(Traitdata, Traitdata$adultDiet == "Detritus and Algae Feeding")
+DetritusSpecies <- c(DetritusSpecies$scientificName)
+PolyphagousSpecies <- filter(Traitdata, Traitdata$adultDiet == "Polyphagous")
+PolyphagousSpecies <- c(PolyphagousSpecies$scientificName)
+NectarAndParasiticSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding and Parasitic")
+NectarAndParasiticSpecies <- c(NectarAndParasiticSpecies$scientificName)
+NectarAndPredaceousSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding and Predaceous")
+NectarAndPredaceousSpecies <- c(NectarAndPredaceousSpecies$scientificName)
+NectarAndSaprophagousSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding and Saprophagous")
+NectarAndSaprophagousSpecies <- c(NectarAndSaprophagousSpecies$scientificName)
+NectarAndMycophagousSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding and Mycophagous")
+NectarAndMycophagousSpecies <- c(NectarAndMycophagousSpecies$scientificName)
+NectarAndKleptoparasiticSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding and Kleptoparasitic")
+NectarAndKleptoparasiticSpecies <- c(NectarAndKleptoparasiticSpecies$scientificName)
+NectarSapAndParasiticSpecies <- filter(Traitdata, Traitdata$adultDiet == "Nectar/Pollen/Honeydew Feeding, Saprophagous and Parasitic")
+NectarSapAndParasiticSpecies <- c(NectarSapAndParasiticSpecies$scientificName)
 
 #Create list of species with different trait types
-AdultDiet <- list(SaprophagousSpecies, NectivoreSpecies, FungivoreSpecies, PredaceousSpecies, PhytophagousSpecies, NASpecies, Nectivore_and_PredaceousSpecies, Nectivore_and_SaprophagousSpecies, Fungivore_and_NectivoresSpecies, Phytophagous_and_FungivoreSpecies)
-
+AdultDiet <- list(NectarSpecies, NonFeedingSpecies, PredaceousSpecies, SaprophagousSpecies, LeafSpecies, UnclearSpecies, ParasiticSpecies, DetritusSpecies, PolyphagousSpecies, NectarAndParasiticSpecies, NectarAndPredaceousSpecies, NectarAndSaprophagousSpecies, NectarAndMycophagousSpecies, NectarAndKleptoparasiticSpecies, NectarSapAndParasiticSpecies)
 # Use the group OTU function to group by trait
 grouptree <-groupOTU(tree, AdultDiet)
 
@@ -489,27 +497,49 @@ plot(colorTree)
 
 #Larval Diet
 #Create vectors containing the species with each trait type 
-PhytophagousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Phytophagous")
-PhytophagousSpecies <- c(PhytophagousSpecies$Species)
-PredaceousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Predaceous")
-PredaceousSpecies <- c(PredaceousSpecies$Species)
-SaprophagousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Saprophagous")
-SaprophagousSpecies <- c(SaprophagousSpecies$Species)
-FungivoreSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Fungivore")
-FungivoreSpecies <- c(FungivoreSpecies$Species)
-OmnivoresSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Omnivores")
-OmnivoresSpecies <- c(OmnivoresSpecies$Species)
-ParasitoidSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Parasitoid")
-ParasitoidSpecies <- c(ParasitoidSpecies$Species)
-ParasiticSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Parasitic ")
-ParasiticSpecies <- c(ParasiticSpecies$Species)
-Phytophagous_and_SaprophagousSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Phytophagous_and_Saprophagous")
-Phytophagous_and_SaprophagousSpecies <- c(Phytophagous_and_SaprophagousSpecies$Species)
-Phytophagous_and_FungivoreSpecies <- filter(Traitdata, Traitdata$Larval_Diet == "Phytophagous_and_Fungivore")
-Phytophagous_and_FungivoreSpecies <- c(Phytophagous_and_FungivoreSpecies$Species)
+SaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Saprophagous")
+SaprophagousSpecies <- c(SaprophagousSpecies$scientificName)
+DetritusSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Detritus and Algae Feeding")
+DetritusSpecies <- c(DetritusSpecies$scientificName)
+PredaceousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Predaceous")
+PredaceousSpecies <- c(PredaceousSpecies$scientificName)
+LeafSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding")
+LeafSpecies <- c(LeafSpecies$scientificName)
+ParasitoidSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Parasitoid")
+ParasitoidSpecies <- c(ParasitoidSpecies$scientificName)
+MycophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Mycophagous")
+MycophagousSpecies <- c(MycophagousSpecies$scientificName)
+UnclearSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Unclear")
+UnclearSpecies <- c(UnclearSpecies$scientificName)
+ParasiticSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Parasitic")
+ParasiticSpecies <- c(ParasiticSpecies$scientificName)
+KleptoparasiticSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Kleptoparasitic")
+KleptoparasiticSpecies <- c(KleptoparasiticSpecies$scientificName)
+DetritusAndPredaceousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Detritus and Algae Feeding and Predaceous")
+DetritusAndPredaceousSpecies <- c(DetritusAndPredaceousSpecies$scientificName)
+MycophagousAndSaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Mycophagous and Saprophagous")
+MycophagousAndSaprophagousSpecies <- c(MycophagousAndSaprophagousSpecies$scientificName)
+LeafAndDetritusSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding and Detritus and Algae Feeding")
+LeafAndDetritusSpecies <- c(LeafAndDetritusSpecies$scientificName)
+LeafAndMycophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding and Mycophagous")
+LeafAndMycophagousSpecies <- c(LeafAndMycophagousSpecies$scientificName)
+LeafAndSaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding and Saprophagous")
+LeafAndSaprophagousSpecies <- c(LeafAndSaprophagousSpecies$scientificName)
+PredaceousAndSaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Predaceous and Saprophagous")
+PredaceousAndSaprophagousSpecies <- c(PredaceousAndSaprophagousSpecies$scientificName)
+LeafMycoAndSaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding, Mycophagous and Saprophagous")
+LeafMycoAndSaprophagousSpecies <- c(LeafMycoAndSaprophagousSpecies$scientificName)
+PredaceousOrSaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Predaceous or Saprophagous")
+PredaceousOrSaprophagousSpecies <- c(PredaceousOrSaprophagousSpecies$scientificName)
+LeafOrSaprophagousSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding or Saprophagous")
+LeafOrSaprophagousSpecies <- c(LeafOrSaprophagousSpecies$scientificName)
+PredaceousOrParasitoidSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Predaceous or Parasitoid")
+PredaceousOrParasitoidSpecies <- c(PredaceousOrParasitoidSpecies$scientificName)
+LeafOrDetritusSpecies <- filter(Traitdata, Traitdata$larvalDiet == "Leaf/Root/Stem Feeding or Detritus and Algae Feeding")
+LeafOrDetritusSpecies <- c(LeafOrDetritusSpecies$scientificName)
 
 #Create list of species with different trait types
-LarvalDiet <- list(PhytophagousSpecies, PredaceousSpecies, SaprophagousSpecies, FungivoreSpecies, OmnivoresSpecies, ParasitoidSpecies, ParasiticSpecies, Phytophagous_and_SaprophagousSpecies, Phytophagous_and_FungivoreSpecies)
+LarvalDiet <- list(SaprophagousSpecies, DetritusSpecies, PredaceousSpecies, LeafSpecies, ParasitoidSpecies, MycophagousSpecies, UnclearSpecies, ParasiticSpecies, KleptoparasiticSpecies, DetritusAndPredaceousSpecies, MycophagousAndSaprophagousSpecies, LeafAndDetritusSpecies, LeafAndMycophagousSpecies, LeafAndSaprophagousSpecies, PredaceousAndSaprophagousSpecies, LeafMycoAndSaprophagousSpecies, PredaceousOrSaprophagousSpecies, LeafOrSaprophagousSpecies, PredaceousOrParasitoidSpecies, LeafOrDetritusSpecies)
 
 # Use the group OTU function to group by trait
 grouptree <-groupOTU(tree, LarvalDiet)
